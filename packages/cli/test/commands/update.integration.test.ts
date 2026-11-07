@@ -68,7 +68,7 @@ import {
 } from "../../src/templates/copilot/index.js";
 import {
   replacePythonCommandLiterals,
-  resolveSkills,
+  resolveAllAsSkills,
   resolveSkillsNeutral,
   resolveAllAsSkillsNeutral,
   resolveBundledSkills,
@@ -389,20 +389,21 @@ describe("update() integration", () => {
     // `.agents/skills/` now holds the correct, neutral, current-version
     // content (written by both Codex and current Pi in current code).
     const neutralContent = readProjectFile(
-      ".agents/skills/trellis-update-spec/SKILL.md",
+      ".agents/skills/trellis-finish-work/SKILL.md",
     );
 
-    // Fabricate the pre-fix `.pi/skills/` leftover with Pi-flavored bytes
-    // (old pi.ts used resolveSkills(ctx), not resolveSkillsNeutral(ctx)).
+    // Fabricate the pre-fix `.pi/skills/` leftover with Pi-flavored bytes.
+    // finish-work still contains a platform command reference, so the old
+    // Pi rendering differs from the shared neutral file Codex writes.
     const piCtx = AI_TOOLS.pi.templateContext;
     const legacyPiSkillFiles = collectSkillTemplates(
       ".pi/skills",
-      resolveSkills(piCtx),
+      resolveAllAsSkills(piCtx),
       resolveBundledSkills(piCtx),
     );
 
     const legacyContent = legacyPiSkillFiles.get(
-      ".pi/skills/trellis-update-spec/SKILL.md",
+      ".pi/skills/trellis-finish-work/SKILL.md",
     );
     expect(legacyContent).toBeDefined();
     // Sanity: the Pi-flavored bytes actually differ from the shared neutral
@@ -417,11 +418,11 @@ describe("update() integration", () => {
     }
     writeHashesV2(hashFilePath(), hashes);
 
-    expect(fs.existsSync(projectFile(".pi/skills/trellis-update-spec"))).toBe(
+    expect(fs.existsSync(projectFile(".pi/skills/trellis-finish-work"))).toBe(
       true,
     );
     expect(
-      fs.existsSync(projectFile(".agents/skills/trellis-update-spec")),
+      fs.existsSync(projectFile(".agents/skills/trellis-finish-work")),
     ).toBe(true);
 
     // Build the current-version templates map for `.agents/skills/` the way
@@ -467,7 +468,7 @@ describe("update() integration", () => {
     // `.agents/skills/` must end up with the correct, current, neutral
     // content — not the stale Pi-flavored bytes from the deleted legacy dir.
     expect(
-      readProjectFile(".agents/skills/trellis-update-spec/SKILL.md"),
+      readProjectFile(".agents/skills/trellis-finish-work/SKILL.md"),
     ).toBe(neutralContent);
   });
 
@@ -906,19 +907,18 @@ describe("update() integration", () => {
     );
   });
 
-  it("#13 user-edited spec/guides files are preserved after update with force", async () => {
+  it("#13 user-edited spec.md is preserved after update with force", async () => {
     await setupProject();
 
-    // User customizes a spec guides file
-    const guidesIndex = path.join(tmpDir, PATHS.SPEC, "guides", "index.md");
-    expect(fs.existsSync(guidesIndex)).toBe(true);
-    const customContent = "# My Custom Guides\n\nEdited by user.\n";
-    fs.writeFileSync(guidesIndex, customContent);
+    // User customizes the project spec. Update must not touch spec/.
+    const specFile = path.join(tmpDir, PATHS.SPEC, "spec.md");
+    expect(fs.existsSync(specFile)).toBe(true);
+    const customContent = "# My Custom Spec\n\nEdited by user.\n";
+    fs.writeFileSync(specFile, customContent);
 
     await update({ force: true });
 
-    // User's customized content must be preserved (update should not touch spec/)
-    expect(fs.readFileSync(guidesIndex, "utf-8")).toBe(customContent);
+    expect(fs.readFileSync(specFile, "utf-8")).toBe(customContent);
   });
 
   it("#14 deleted spec directory is NOT recreated by update", async () => {

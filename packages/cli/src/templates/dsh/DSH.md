@@ -24,8 +24,8 @@ In dsh:
    language. For a new task the agent should load the `trellis-start` skill,
    which reads the current task state from `.trellis/` and routes to
    `trellis-brainstorm` (unclear requirements), `trellis-before-dev` (about to
-   write code), `trellis-check` (done coding), or `trellis-update-spec`
-   (learned something worth capturing).
+   write code), or `trellis-check` (done coding). A project-wide rule is
+   edited in `.trellis/spec/spec.md` only when the user asks.
 2. Entry skills are `trellis-start` / `trellis-continue` / `trellis-finish-work`
    in `.dsh/skills/`. You can also ask for them by name at any time.
 3. Type `/trellis:finish-work` is a slash-command convention from other hosts —
@@ -35,8 +35,8 @@ In dsh:
 ## File map
 
 - `.agents/skills/` — auto-triggered workflow skills (`trellis-before-dev`,
-  `trellis-brainstorm`, `trellis-check`, `trellis-break-loop`,
-  `trellis-update-spec`) plus the bundled `trellis-meta` /
+  `trellis-brainstorm`, `trellis-check`) plus the
+  bundled `trellis-meta` /
   `trellis-spec-bootstrap` / `trellis-session-insight` skills. Byte-identical
   to Codex / Gemini CLI / Pi / Kimi writes into the same shared root.
 - `.dsh/skills/` — dsh-private entry skills (`trellis-start` /

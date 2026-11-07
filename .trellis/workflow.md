@@ -24,18 +24,11 @@ python3 ./.trellis/scripts/init_developer.py <your-name>
 
 Creates `.trellis/.developer` (gitignored) + `.trellis/workspace/<your-name>/`.
 
-### Spec System
+### Spec and Skills
 
-`.trellis/spec/` holds coding guidelines organized by package and layer.
+`.trellis/spec/spec.md` is the only spec file. It holds short project-wide rules: what a part of the repository is for, and rules that apply no matter which task is running. Session start reads this file into the conversation. When the user asks to record a spec, edit that file directly. There is no spec-update skill.
 
-- `.trellis/spec/<package>/<layer>/index.md` — entry point with **Pre-Development Checklist** + **Quality Check**. Actual guidelines live in the `.md` files it points to.
-- `.trellis/spec/guides/index.md` — cross-package thinking guides.
-
-```bash
-python3 ./.trellis/scripts/get_context.py --mode packages   # list packages / layers
-```
-
-**When to update spec**: new pattern/convention found · bug-fix prevention to codify · new technical decision.
+A fixed procedure for one situation is a project skill. The skill description is the situation; the body is the steps. Write one only when the user asks. Put it in the directory the current platform loads (Cursor: `.cursor/skills/<name>/SKILL.md`; hosts that use the shared root: `.agents/skills/<name>/SKILL.md`). Do not put that procedure in `spec.md`. Do not review a finished task for a spec or a skill on your own.
 
 ### Task System
 
@@ -218,13 +211,13 @@ Inline mode: skip jsonl curation; Phase 2 reads artifacts/specs via `trellis-bef
      Scope: all of Phase 2 + Phase 3.2-3.4 (status stays 'in_progress' from
      task.py start until task.py archive; only archive flips it). The body
      therefore must cover every required step from implementation through
-     commit, including Phase 3.3 spec update and Phase 3.4 commit. -->
+     commit, including Phase 3.4 commit. -->
 
 Sub-agent dispatch protocol applies to all platforms and all sub-agents, including native Codex `SubagentStart` context injection with child-side pull fallback, class-2 Gemini/Qoder/Copilot/Reasonix/Trae/Grok/Kimi Code, hook-backed ZCode/Snow, and `trellis-research`: every dispatch prompt starts with `Active task: <task path from task.py current>` before role-specific instructions. On Grok Build, use `spawn_subagent` with `subagent_type` set to the Trellis agent name (e.g. `trellis-implement`). On Kimi Code, dispatch the built-in `coder` / `explore` sub-agent with the matching `.kimi-code/skills/trellis-<role>/SKILL.md` instructions.
 
 [workflow-state:in_progress]
-Tools: `trellis-implement` / `trellis-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `trellis-update-spec` is a skill. `trellis-check` exists as both; prefer the Agent form when verifying after code changes.
-Flow: `trellis-implement` -> `trellis-check` -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+Tools: `trellis-implement` / `trellis-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `trellis-check` exists as both; prefer the Agent form when verifying after code changes.
+Flow: `trellis-implement` -> `trellis-check` -> commit (Phase 3.4). Do not run `/trellis:finish-work` unless the user asks. Do not review the task for a spec or a skill unless the user asks.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
 Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
 [/workflow-state:in_progress]
@@ -235,18 +228,16 @@ Dispatch prompt starts with `Active task: <task path from task.py current>`. Rea
      instead of dispatching sub-agents. -->
 
 [workflow-state:in_progress-inline]
-Flow: `trellis-before-dev` -> edit -> `trellis-check` -> validation -> `trellis-update-spec` -> commit (Phase 3.4) -> `/trellis:finish-work`.
+Flow: `trellis-before-dev` -> edit -> `trellis-check` -> validation -> commit (Phase 3.4). Do not run `/trellis:finish-work` unless the user asks. Do not review the task for a spec or a skill unless the user asks.
 Do not dispatch implement/check sub-agents in inline mode.
 Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, plus relevant spec/research loaded by skills.
 [/workflow-state:in_progress-inline]
 
 ### Phase 3: Finish
-- 3.2 Debug retrospective `[on demand]`
-- 3.3 Spec update `[required · once]`
 - 3.4 Commit changes `[required · once]`
 - 3.5 Wrap-up reminder
 
-> Note: step 3.1 was folded into 2.2 (last-iteration full-scope check) and 3.4 (commit preamble). Numbering kept stable to avoid breaking external references.
+> Note: step 3.1 was folded into 2.2 (last-iteration full-scope check) and 3.4 (commit). Steps 3.2 (debug retrospective) and 3.3 (automatic spec or skill review) were removed. Numbering kept stable to avoid breaking external references. Record a spec or a skill only when the user asks.
 
 <!-- Per-turn breadcrumb: shown while status='completed'.
      Currently DEAD in normal flow: cmd_archive writes status='completed' in
@@ -276,7 +267,8 @@ When a user request matches one of these intents inside an active task, route fi
 
 - Planning or unclear requirements -> `trellis-brainstorm`.
 - `in_progress` implementation/check -> dispatch `trellis-implement` / `trellis-check`.
-- Repeated debugging -> `trellis-break-loop`; spec updates -> `trellis-update-spec`.
+- User asks to record a project-wide rule -> edit `.trellis/spec/spec.md`.
+- User asks to record a situation-specific procedure -> write a project skill. Do not edit `.trellis/spec/spec.md` for it.
 
 [/Claude Code, Cursor, OpenCode, codex-sub-agent, Kiro, Gemini, Qoder, CodeBuddy, Copilot, Droid, Pi, Oh My Pi, ZCode, Snow, Reasonix, Trae, Grok, Kimi Code]
 
@@ -284,7 +276,8 @@ When a user request matches one of these intents inside an active task, route fi
 
 - Planning or unclear requirements -> `trellis-brainstorm`.
 - Before editing -> `trellis-before-dev`; after editing -> `trellis-check`.
-- Repeated debugging -> `trellis-break-loop`; spec updates -> `trellis-update-spec`.
+- User asks to record a project-wide rule -> edit `.trellis/spec/spec.md`.
+- User asks to record a situation-specific procedure -> write a project skill. Do not edit `.trellis/spec/spec.md` for it.
 
 [/codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
@@ -389,8 +382,7 @@ Curate `implement.jsonl` and `check.jsonl` so the Phase 2 sub-agents get the rig
 **Format**: one JSON object per line — `{"file": "<path>", "reason": "<why>"}`. Paths are repo-root relative.
 
 **What to put in**:
-- **Spec files** — `.trellis/spec/<package>/<layer>/index.md` and any specific guideline files (`error-handling.md`, `conventions.md`, etc.) relevant to this task
-- **Research files** — `{TASK_DIR}/research/*.md` that the sub-agent will need to consult
+- **Research files** — `{TASK_DIR}/research/*.md` that the sub-agent will need to consult. `.trellis/spec/spec.md` is already read at session start; do not list it here.
 
 **What NOT to put in**:
 - Code files (`src/**`, `packages/**/*.ts`, etc.) — those are read by the sub-agent during implementation, not pre-registered here
@@ -554,7 +546,7 @@ If issues are found → fix → re-check, until green.
 
 [/codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
 
-**Final pass (before Phase 3.4 commit)**: the last 2.2 of a task must run full-scope, not just on the latest implement chunk. List all affected packages with `python3 ./.trellis/scripts/get_context.py --mode packages`, then load each package's spec index Quality Check section. This catches cross-layer / multi-package issues a mid-iteration local 2.2 cannot.
+**Final pass (before Phase 3.4 commit)**: the last 2.2 of a task must run full-scope, not just on the latest implement chunk. Check the work against `.trellis/spec/spec.md`.
 
 #### 2.3 Rollback `[on demand]`
 
@@ -566,31 +558,11 @@ If issues are found → fix → re-check, until green.
 
 ## Phase 3: Finish
 
-Goal: ensure code quality, capture lessons, record the work.
-
-#### 3.2 Debug retrospective `[on demand]`
-
-If this task involved repeated debugging (the same issue was fixed multiple times), load the `trellis-break-loop` skill to:
-- Classify the root cause
-- Explain why earlier fixes failed
-- Propose prevention
-
-The goal is to capture debugging lessons so the same class of issue doesn't recur.
-
-#### 3.3 Spec update `[required · once]`
-
-Load the `trellis-update-spec` skill and review whether this task produced new knowledge worth recording:
-- Newly discovered patterns or conventions
-- Pitfalls you hit
-- New technical decisions
-
-Update the docs under `.trellis/spec/` accordingly. Even if the conclusion is "nothing to update", walk through the judgment.
+Goal: commit the work. Record a spec or a skill only when the user asks.
 
 #### 3.4 Commit changes `[required · once]`
 
-**Spec-sync preamble**: before drafting commits, ask: did this task fix a bug or surface non-obvious knowledge that should land in `.trellis/spec/` so future-you (or future-AI) doesn't repeat the mistake? If yes, return to Phase 3.3 first — spec writes belong in the same task's commit batch, not as a forgotten follow-up.
-
-The AI drives a batched commit of this task's code changes so `/finish-work` can run cleanly afterwards. Goal: produce work commits FIRST, then bookkeeping (archive + journal) commits land after — never interleaved.
+The AI drives a batched commit of this task's code changes so `/finish-work` can run cleanly afterwards. Archive still waits until the user runs `/trellis:finish-work`. Goal: produce work commits FIRST, then bookkeeping (archive + journal) commits land after — never interleaved.
 
 **Step-by-step**:
 

@@ -363,7 +363,7 @@ def _collect_spec_index_paths(trellis_dir: Path) -> list[str]:
 def _build_compact_current_state(
     trellis_dir: Path,
     hook_input: dict,
-    spec_index_paths: list[str],
+    _spec_index_paths: list[str],
 ) -> str:
     repo_root = trellis_dir.parent
     lines: list[str] = []
@@ -413,9 +413,6 @@ def _build_compact_current_state(
             lines.append(
                 f"Journal: {_repo_relative(repo_root, journal)}, {count_lines(journal)} / 2000 lines."
             )
-
-    if spec_index_paths:
-        lines.append(f"Spec indexes: {len(spec_index_paths)} available.")
 
     return "\n".join(lines)
 
@@ -516,16 +513,22 @@ Trellis compact SessionStart context. Use it to orient the session; load details
         "are skipped for lightweight tasks.\n\n"
     )
 
-    if spec_index_paths:
-        output.write("## Available indexes (read on demand)\n")
-        for p in spec_index_paths:
-            output.write(f"- {p}\n")
-        output.write("\n")
+    project_spec = ""
+    spec_file = trellis_dir / "spec" / "spec.md"
+    if spec_file.is_file():
+        try:
+            project_spec = spec_file.read_text(encoding="utf-8")
+        except OSError:
+            project_spec = ""
+    if len(project_spec) > 16000:
+        project_spec = project_spec[:16000].rstrip() + "\n\n[spec.md truncated]\n"
+    output.write("## Project spec (`.trellis/spec/spec.md`)\n\n")
+    if project_spec.strip():
+        output.write(project_spec.rstrip())
+        output.write("\n\n")
+    else:
+        output.write("This file is missing. Project-wide rules belong in that one file.\n\n")
 
-    output.write(
-        "Discover more via: "
-        "`python3 ./.trellis/scripts/get_context.py --mode packages`\n"
-    )
     output.write("</guidelines>\n\n")
 
     task_status = _get_task_status(trellis_dir, hook_input)

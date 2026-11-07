@@ -99,6 +99,6 @@ describe("copilot getAllPrompts", () => {
 		const names = getAllPrompts().map((p) => p.name).sort();
 		expect(names[0]).toBe("before-dev");
 		expect(names).toContain("start");
-		expect(names).toContain("update-spec");
+		expect(names).not.toContain("update-spec");
 	});
 });

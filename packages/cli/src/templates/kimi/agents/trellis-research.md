@@ -78,7 +78,7 @@ Do NOT paste full research content into the reply. The files are the contract.
 ### Write Forbidden
 
 - Code files (`src/`, `lib/`, etc.)
-- Spec files (`.trellis/spec/`) - main agent should use the update-spec skill instead
+- Spec files (`.trellis/spec/`) - do not edit spec from this agent. The main agent edits `.trellis/spec/spec.md` only when the user asks
 - `.trellis/scripts/`, `.trellis/workflow.md`, platform config (`.kimi-code/`, `.claude/`, `.cursor/`, etc.)
 - Other task directories
 - Any git operation

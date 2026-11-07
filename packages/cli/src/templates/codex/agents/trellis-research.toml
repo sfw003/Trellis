@@ -52,7 +52,7 @@ Write allowed ONLY in `{TASK_DIR}/research/`.
 
 Write forbidden everywhere else:
 - Code files (`src/`, `lib/`, …)
-- Spec files (`.trellis/spec/`) — use `update-spec` skill instead
+- Spec files (`.trellis/spec/`) — do not edit spec from this agent. The main agent edits `.trellis/spec/spec.md` only when the user asks
 - `.trellis/scripts/`, `.trellis/workflow.md`, platform config
 - Other task directories
 - Any git operation

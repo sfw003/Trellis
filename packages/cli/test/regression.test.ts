@@ -6486,7 +6486,7 @@ print(json.dumps({
     // regressions that omit Phase 3.4 from the per-turn breadcrumb.
     writeWorkflowMd(
       "[workflow-state:in_progress]\n" +
-        "Flow: trellis-implement → trellis-check → trellis-update-spec → commit (Phase 3.4) → /trellis:finish-work\n" +
+        "Flow: trellis-implement → trellis-check → commit (Phase 3.4)\n" +
         "[/workflow-state:in_progress]\n",
     );
 
@@ -7858,19 +7858,21 @@ print(len(entries))
     expect(tagBlockRe.test(workflowBlock)).toBe(false);
   });
 
-  it("[workflow-v2] session-start.py <guidelines> block lists context order and spec paths", () => {
+  it("[workflow-v2] session-start.py <guidelines> block inlines spec.md", () => {
     writeTrellisScripts();
     writeProjectFile(path.join(".trellis", ".developer"), "name=test\n");
     writeProjectFile(
       path.join(".trellis", "workflow.md"),
       templateWorkflowMd(),
     );
-    // Guides are no longer inlined in compact SessionStart.
+    writeProjectFile(
+      path.join(".trellis", "spec", "spec.md"),
+      "# Project spec\n\nSPEC_INLINE_MARKER\n",
+    );
     writeProjectFile(
       path.join(".trellis", "spec", "guides", "index.md"),
       "# Thinking Guides\n\nGUIDES_INLINE_MARKER\n",
     );
-    // Package index — must be paths-only (content should NOT appear)
     writeProjectFile(
       path.join(".trellis", "spec", "cli", "backend", "index.md"),
       "# Backend\n\nBACKEND_INDEX_CONTENT_SHOULD_NOT_APPEAR\n",
@@ -7894,13 +7896,12 @@ print(len(entries))
     const guidelinesBlock = guidelinesMatch[1];
 
     expect(guidelinesBlock).toContain("Task context order");
+    expect(guidelinesBlock).toContain("SPEC_INLINE_MARKER");
     expect(guidelinesBlock).not.toContain("GUIDES_INLINE_MARKER");
-    expect(guidelinesBlock).toContain(".trellis/spec/cli/backend/index.md");
+    expect(guidelinesBlock).not.toContain(".trellis/spec/cli/backend/index.md");
     expect(guidelinesBlock).not.toContain(
       "BACKEND_INDEX_CONTENT_SHOULD_NOT_APPEAR",
     );
-    // Pointer to discovery command
-    expect(guidelinesBlock).toContain("--mode packages");
   });
 
   // ------------------------------------------------------------

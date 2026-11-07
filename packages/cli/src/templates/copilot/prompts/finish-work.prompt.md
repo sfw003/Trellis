@@ -79,18 +79,12 @@ Final git log order: `<work commits from 3.4>` → `chore(task): archive ...` (o
 
 ```
 Development Flow (workflow.md Phase 3):
-  3.2 Debug retrospective (on demand)
-  3.3 Spec update
   3.4 Commit changes  -> AI drafts batched commits, user confirms
   3.5 Wrap-up         -> /finish-work (this prompt: survey + archive + journal)
-  (3.1 was folded into 2.2 + 3.4 — see workflow.md "Phase 3: Finish" note)
-
-Debug Flow:
-  Hit bug -> Fix -> /break-loop -> Knowledge capture
+  (3.1 was folded into 2.2 + 3.4; 3.2 and 3.3 were removed — see workflow.md "Phase 3: Finish" note)
 ```
 
-- `/finish-work` — survey + archive + record session (this prompt)
-- `/break-loop` — deep analysis after debugging
+- `/finish-work` — survey + archive + record session (this prompt). Run it when the user asks.
 
 ---
 

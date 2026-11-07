@@ -46,7 +46,7 @@ python3 ./.trellis/scripts/get_context.py
 
 ```bash
 python3 ./.trellis/scripts/get_context.py --mode packages  # Discover available spec layers
-cat .trellis/spec/guides/index.md    # Thinking guides
+cat .trellis/spec/spec.md
 ```
 
 ### Step 4: Ask User for Requirements

@@ -741,19 +741,13 @@ Finish checklist and requirements:
 
 1. **Review changes** - Run `git diff --name-only` to see all changed files
 	2. **Verify task artifacts** - Check requirements in prd.md and, when present, design.md / implement.md
-3. **Spec sync** - Analyze whether changes introduce new patterns, contracts, or conventions
-   - If new pattern/convention found: read target spec file → update it → update index.md if needed
-   - If infra/cross-layer change: follow the 7-section mandatory template from update-spec.md
-   - If pure code fix with no new patterns: skip this step
-4. **Run final checks** - Execute lint and typecheck
-5. **Confirm ready** - Ensure code is ready for PR
+3. **Run final checks** - Execute lint and typecheck
+4. **Confirm ready** - Ensure code is ready for PR
 
 ## Important Constraints
 
-- You MAY update spec files when gaps are detected (use update-spec.md as guide)
-- MUST read the target spec file BEFORE editing (avoid duplicating existing content)
-- Do NOT update specs for trivial changes (typos, formatting, obvious fixes)
-- If critical CODE issues found, report them clearly (fix specs, not code)
+- Do NOT edit `.trellis/spec/` or create a skill from this agent
+- If critical CODE issues found, report them clearly
 - Verify all acceptance criteria in prd.md are met
 - Verify design.md and implement.md constraints when those files are present"""
 

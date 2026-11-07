@@ -663,41 +663,24 @@ def _resolve_spec_scope(
     return None  # Unknown scope type: full scan
 
 
-def _collect_spec_index_paths(trellis_dir: Path, allowed_pkgs: set | None) -> list[str]:
-    paths: list[str] = []
-    guides_index = trellis_dir / "spec" / "guides" / "index.md"
-    if guides_index.is_file():
-        paths.append(".trellis/spec/guides/index.md")
-
-    spec_dir = trellis_dir / "spec"
-    if not spec_dir.is_dir():
-        return paths
-
-    for sub in sorted(spec_dir.iterdir()):
-        if not sub.is_dir() or sub.name.startswith(".") or sub.name == "guides":
-            continue
-
-        index_file = sub / "index.md"
-        if index_file.is_file():
-            paths.append(f".trellis/spec/{sub.name}/index.md")
-            continue
-
-        if allowed_pkgs is not None and sub.name not in allowed_pkgs:
-            continue
-        for nested in sorted(sub.iterdir()):
-            if not nested.is_dir():
-                continue
-            nested_index = nested / "index.md"
-            if nested_index.is_file():
-                paths.append(f".trellis/spec/{sub.name}/{nested.name}/index.md")
-
-    return paths
+def _read_project_spec(trellis_dir: Path) -> str:
+    """Body of the single project spec. Empty when the file is missing."""
+    spec_file = trellis_dir / "spec" / "spec.md"
+    if not spec_file.is_file():
+        return ""
+    try:
+        text = spec_file.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    max_chars = 16000
+    if len(text) <= max_chars:
+        return text.rstrip()
+    return text[:max_chars].rstrip() + "\n\n[spec.md truncated]\n"
 
 
 def _build_compact_current_state(
     trellis_dir: Path,
     input_data: dict,
-    spec_index_paths: list[str],
 ) -> str:
     repo_root = trellis_dir.parent
     lines: list[str] = []
@@ -747,9 +730,6 @@ def _build_compact_current_state(
             lines.append(
                 f"Journal: {_repo_relative(repo_root, journal)}, {count_lines(journal)} / 2000 lines."
             )
-
-    if spec_index_paths:
-        lines.append(f"Spec indexes: {len(spec_index_paths)} available.")
 
     return "\n".join(lines)
 
@@ -857,15 +837,12 @@ def main():
     _persist_context_key_for_bash(context_key)
 
     # Load config for scope filtering and legacy detection
-    is_mono, packages, scope_config, task_pkg, default_pkg = _load_trellis_config(
+    is_mono, packages, _scope_config, _task_pkg, _default_pkg = _load_trellis_config(
         trellis_dir,
         hook_input,
     )
-    allowed_pkgs = _resolve_spec_scope(is_mono, packages, scope_config, task_pkg, default_pkg)
 
     output = StringIO()
-
-    spec_index_paths = _collect_spec_index_paths(trellis_dir, allowed_pkgs)
 
     output.write("""<session-context>
 Trellis compact SessionStart context. Use it to orient the session; load details on demand.
@@ -881,7 +858,7 @@ Trellis compact SessionStart context. Use it to orient the session; load details
         output.write(f"<migration-warning>\n{legacy_warning}\n</migration-warning>\n\n")
 
     output.write("<current-state>\n")
-    output.write(_build_compact_current_state(trellis_dir, hook_input, spec_index_paths))
+    output.write(_build_compact_current_state(trellis_dir, hook_input))
     output.write("\n</current-state>\n\n")
 
     output.write("<trellis-workflow>\n")
@@ -895,16 +872,14 @@ Trellis compact SessionStart context. Use it to orient the session; load details
         "are skipped for lightweight tasks.\n\n"
     )
 
-    if spec_index_paths:
-        output.write("## Available indexes (read on demand)\n")
-        for p in spec_index_paths:
-            output.write(f"- {p}\n")
-        output.write("\n")
+    project_spec = _read_project_spec(trellis_dir)
+    output.write("## Project spec (`.trellis/spec/spec.md`)\n\n")
+    if project_spec:
+        output.write(project_spec)
+        output.write("\n\n")
+    else:
+        output.write("This file is missing. Project-wide rules belong in that one file.\n\n")
 
-    output.write(
-        "Discover more via: "
-        "`python3 ./.trellis/scripts/get_context.py --mode packages`\n"
-    )
     output.write("</guidelines>\n\n")
 
     # Check task status and inject structured tag

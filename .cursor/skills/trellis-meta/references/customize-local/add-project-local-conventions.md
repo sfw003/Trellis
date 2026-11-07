@@ -6,9 +6,8 @@ Often the user does not need to change Trellis mechanics; they need local AI to 
 
 | Content type | Location |
 | --- | --- |
-| Rules code must follow | `.trellis/spec/<layer>/` |
-| Cross-layer thinking methods | `.trellis/spec/guides/` |
-| AI capability for a project-specific flow | Platform-local skill |
+| A rule that applies no matter which task is running | `.trellis/spec/spec.md` |
+| A fixed procedure for one situation | A project skill |
 | One-off task material | `.trellis/tasks/<task>/` |
 | Session summary | `.trellis/workspace/<developer>/journal-N.md` |
 
@@ -50,26 +49,11 @@ This skill documents this repository's Trellis customizations only.
 
 For multi-platform projects, place equivalent versions in other platform skill directories, or use `.agents/skills/` for platforms that support the shared layer.
 
-## Write To `.trellis/spec/`
+## Write to `.trellis/spec/spec.md`
 
-If the content is a coding convention, write it to spec. Examples:
+If the user asks to record a project-wide rule, add it to `.trellis/spec/spec.md`. Session start reads that file. Do not create another spec file, and do not add the file to task JSONL.
 
-```text
-.trellis/spec/backend/error-handling.md
-.trellis/spec/frontend/components.md
-.trellis/spec/guides/cross-platform-thinking-guide.md
-```
-
-After writing it, update the corresponding `index.md` so AI can find the new rule from the entry point.
-
-## Make The Current Task Use New Conventions
-
-After writing a spec, add it to the current task context:
-
-```bash
-python3 ./.trellis/scripts/task.py add-context <task> implement ".trellis/spec/backend/error-handling.md" "Error handling conventions"
-python3 ./.trellis/scripts/task.py add-context <task> check ".trellis/spec/backend/error-handling.md" "Review error handling"
-```
+A fixed procedure for one situation is a project skill, not a spec entry.
 
 ## Do Not Store Project-Private Rules In `trellis-meta`
 

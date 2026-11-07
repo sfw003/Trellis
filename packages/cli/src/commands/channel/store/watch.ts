@@ -125,7 +125,13 @@ export async function* watchEvents(
 
   let watcher: fs.FSWatcher | null = null;
   try {
-    watcher = fs.watch(channelDir(channelName, opts.project), () => wake());
+    // libuv aborts on Windows when the watched path still contains an 8.3
+    // short name (os.tmpdir() is C:\Users\ADMINI~1\...) while the event
+    // reports the long path. realpathSync keeps the short name.
+    const watchDir = fs.realpathSync.native(
+      channelDir(channelName, opts.project),
+    );
+    watcher = fs.watch(watchDir, () => wake());
     watcher.on("error", () => {
       try {
         watcher?.close();

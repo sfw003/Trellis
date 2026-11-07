@@ -1,49 +1,21 @@
 # Local Spec System
 
-`.trellis/spec/` is the user's project-specific engineering spec library. Trellis is not about making AI memorize conventions; it injects relevant specs or requires the AI to read them at the right time.
+`.trellis/spec/spec.md` is the only spec file. It holds short project-wide rules: what a part of the repository is for, and rules that apply no matter which task is running. This is the same kind of text that belongs in a project `AGENTS.md`.
 
-## Directory Model
+Session start reads that file into the conversation. There is no spec layer, no per-layer `index.md`, and no guides directory.
 
-A common single-repository structure:
+## What belongs in spec.md
 
-```text
-.trellis/spec/
-├── backend/
-│   ├── index.md
-│   └── ...
-├── frontend/
-│   ├── index.md
-│   └── ...
-└── guides/
-    ├── index.md
-    └── ...
-```
+- What a part of the repository is for.
+- A rule that applies no matter which task is running.
 
-A common monorepo structure:
+A fixed procedure for one situation belongs in a project skill. The skill description is the situation; the body is the steps. Write either one only when the user asks. Do not review a finished task for a spec or a skill on your own.
 
-```text
-.trellis/spec/
-├── cli/
-│   ├── backend/
-│   │   ├── index.md
-│   │   └── ...
-│   └── unit-test/
-│       ├── index.md
-│       └── ...
-├── docs-site/
-│   └── docs/
-│       ├── index.md
-│       └── ...
-└── guides/
-    ├── index.md
-    └── ...
-```
+When the user asks to record a project-wide rule, edit `.trellis/spec/spec.md` directly. There is no spec-update skill.
 
-`index.md` is the entry point for each layer. It should list the Pre-Development Checklist and Quality Check. Specific guidelines live in other Markdown files in the same directory.
+## Package configuration
 
-## Package Configuration
-
-`.trellis/config.yaml` can declare packages:
+`.trellis/config.yaml` can still declare packages so task context knows the repository layout:
 
 ```yaml
 packages:
@@ -61,42 +33,20 @@ The AI can run:
 python3 ./.trellis/scripts/get_context.py --mode packages
 ```
 
-This command lists packages and spec layers for the current project. Use this output as the reference when configuring context JSONL.
+This command lists packages. It does not select spec files.
 
-## How Specs Enter Tasks
+## How the spec enters a session
 
-Before a task enters implementation, Phase 1.3 should write relevant specs into `implement.jsonl` / `check.jsonl`:
-
-```jsonl
-{"file": ".trellis/spec/cli/backend/index.md", "reason": "CLI backend conventions"}
-{"file": ".trellis/spec/cli/unit-test/conventions.md", "reason": "Test expectations"}
-```
-
-Sub-agents or platform preludes read these JSONL files and load the referenced specs. On platforms without sub-agent support, the AI should read the relevant specs directly according to the workflow.
-
-## What Specs Should Contain
-
-Specs should contain executable engineering conventions for the project, not generic best practices:
-
-- Where files should live.
-- How error handling should be expressed.
-- Input/output contracts for APIs, hooks, and commands.
-- Patterns that are forbidden.
-- Cases that require tests.
-- Project-specific pitfalls and how to avoid them.
-
-When the AI learns a new rule during implementation or debugging, it should update `.trellis/spec/` rather than only summarizing it in chat.
+Session start inlines `.trellis/spec/spec.md`. Do not also list that file in `implement.jsonl` or `check.jsonl`. Those files are for research notes the sub-agent needs.
 
 ## Local Customization Points
 
 | Need | Edit location |
 | --- | --- |
-| Add a new spec layer | `.trellis/spec/<package>/<layer>/index.md` and corresponding guideline files. |
-| Change monorepo spec mapping | `packages` / `default_package` / `spec_scope` in `.trellis/config.yaml`. |
-| Change which specs AI reads before implementation | The task's `implement.jsonl`. |
-| Change which specs AI reads during checking | The task's `check.jsonl`. |
-| Change when specs should be updated | Phase 3.3 in `.trellis/workflow.md` and the `trellis-update-spec` skill. |
+| Add or change a project-wide rule | `.trellis/spec/spec.md` |
+| Add a situation-specific procedure | A project skill in the platform skill directory |
+| Change monorepo package mapping | `packages` / `default_package` in `.trellis/config.yaml` |
 
 ## Boundaries
 
-`.trellis/spec/` is the user's project specification, not a permanent copy of Trellis built-in templates. The AI should encourage the user to update it according to the actual project code instead of treating Trellis default templates as immutable documents.
+`.trellis/spec/spec.md` is the user's project specification. Write what the code actually does. Aspirational patterns that are not in the codebase do not belong there.

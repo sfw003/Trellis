@@ -347,47 +347,17 @@ function writeTaskSkeleton(
  * task_store.py).
  */
 function getBootstrapChecklistItems(
-  projectType: ProjectType,
-  packages?: DetectedPackage[],
+  _projectType: ProjectType,
+  _packages?: DetectedPackage[],
 ): string[] {
-  if (packages && packages.length > 0) {
-    const items = packages.map((pkg) => `Fill guidelines for ${pkg.name}`);
-    items.push("Add code examples");
-    return items;
-  }
-  if (projectType === "frontend") {
-    return ["Fill frontend guidelines", "Add code examples"];
-  }
-  if (projectType === "backend") {
-    return ["Fill backend guidelines", "Add code examples"];
-  }
-  if (projectType === "unknown") {
-    return ["Add spec layers when the project stack is known"];
-  }
-  return [
-    "Fill backend guidelines",
-    "Fill frontend guidelines",
-    "Add code examples",
-  ];
+  return ["Write project-wide rules in .trellis/spec/spec.md"];
 }
 
 function getBootstrapRelatedFiles(
-  projectType: ProjectType,
-  packages?: DetectedPackage[],
+  _projectType: ProjectType,
+  _packages?: DetectedPackage[],
 ): string[] {
-  if (packages && packages.length > 0) {
-    return packages.map((pkg) => `.trellis/spec/${sanitizePkgName(pkg.name)}/`);
-  }
-  if (projectType === "frontend") {
-    return [".trellis/spec/frontend/"];
-  }
-  if (projectType === "backend") {
-    return [".trellis/spec/backend/"];
-  }
-  if (projectType === "unknown") {
-    return [".trellis/spec/"];
-  }
-  return [".trellis/spec/backend/", ".trellis/spec/frontend/"];
+  return [".trellis/spec/spec.md"];
 }
 
 function getBootstrapPrdContent(
@@ -409,11 +379,9 @@ The developer just ran \`trellis init\` on this project for the first time.
 exists under \`.trellis/tasks/\`. When they want to work on it, they should start
 this task from a session that provides Trellis session identity.
 
-**Your job**: help them populate \`.trellis/spec/\` with the team's real
-coding conventions. Every future AI session — this project's
-\`trellis-implement\` and \`trellis-check\` sub-agents — auto-loads spec files
-listed in per-task jsonl manifests. Empty spec = sub-agents write generic
-code. Real spec = sub-agents match the team's actual patterns.
+**Your job**: help them write the project's short rules in \`.trellis/spec/spec.md\`.
+Every session reads that one file. A fixed procedure for one situation belongs
+in a project skill, not in this file.
 
 Don't dump instructions. Open with a short greeting, figure out if the repo
 has any existing convention docs (CLAUDE.md, .cursorrules, etc.), and drive
@@ -427,42 +395,12 @@ ${checklistMarkdown}
 
 ---
 
-## Spec files to populate
-`;
+## Spec file
 
-  const backendSection = `
-
-### Backend guidelines
-
-| File | What to document |
-|------|------------------|
-| \`.trellis/spec/backend/directory-structure.md\` | Where different file types go (routes, services, utils) |
-| \`.trellis/spec/backend/database-guidelines.md\` | ORM, migrations, query patterns, naming conventions |
-| \`.trellis/spec/backend/error-handling.md\` | How errors are caught, logged, and returned |
-| \`.trellis/spec/backend/logging-guidelines.md\` | Log levels, format, what to log |
-| \`.trellis/spec/backend/quality-guidelines.md\` | Code review standards, testing requirements |
-`;
-
-  const frontendSection = `
-
-### Frontend guidelines
-
-| File | What to document |
-|------|------------------|
-| \`.trellis/spec/frontend/directory-structure.md\` | Component/page/hook organization |
-| \`.trellis/spec/frontend/component-guidelines.md\` | Component patterns, props conventions |
-| \`.trellis/spec/frontend/hook-guidelines.md\` | Custom hook naming, patterns |
-| \`.trellis/spec/frontend/state-management.md\` | State library, patterns, what goes where |
-| \`.trellis/spec/frontend/type-safety.md\` | TypeScript conventions, type organization |
-| \`.trellis/spec/frontend/quality-guidelines.md\` | Linting, testing, accessibility |
+\`.trellis/spec/spec.md\` is the only spec file. Write the project-wide rules there.
 `;
 
   const footer = `
-
-### Thinking guides (already populated)
-
-\`.trellis/spec/guides/\` contains general thinking guides pre-filled with
-best practices. Customize only if something clearly doesn't fit this project.
 
 ---
 
@@ -471,7 +409,7 @@ best practices. Customize only if something clearly doesn't fit this project.
 ### Step 1: Import from existing convention files first (preferred)
 
 Search the repo for existing convention docs. If any exist, read them and
-extract the relevant rules into the matching \`.trellis/spec/\` files —
+extract the project-wide rules into \`.trellis/spec/spec.md\` —
 usually much faster than documenting from scratch.
 
 | File / Directory | Tool |
@@ -491,7 +429,7 @@ usually much faster than documenting from scratch.
 
 ### Step 2: Analyze the codebase for anything not covered by existing docs
 
-Scan real code to discover patterns. Before writing each spec file:
+Scan real code for rules that apply no matter which task is running. Before adding one to \`spec.md\`:
 - Find 2-3 real examples of each pattern in the codebase.
 - Reference real file paths (not hypothetical ones).
 - Document anti-patterns the team clearly avoids.
@@ -509,15 +447,9 @@ is a separate conversation, not a bootstrap concern.
 
 ## Quick explainer of the runtime (share when they ask "why do we need spec at all")
 
-- Every AI coding task spawns two sub-agents: \`trellis-implement\` (writes
-  code) and \`trellis-check\` (verifies quality).
-- Each task has \`implement.jsonl\` / \`check.jsonl\` manifests listing which
-  spec files to load.
-- The platform hook auto-injects those spec files + the task's \`prd.md\`
-  into every sub-agent prompt, so the sub-agent codes/reviews per team
-  conventions without anyone pasting them manually.
-- Source of truth: \`.trellis/spec/\`. That's why filling it well now pays
-  off forever.
+- Session start reads \`.trellis/spec/spec.md\` into the conversation.
+- Situation-specific procedures belong in project skills, not in that file.
+- Source of truth: \`.trellis/spec/spec.md\`.
 
 ---
 
@@ -546,37 +478,6 @@ etc.) I can pull from, or should I scan the codebase from scratch?"
 `;
 
   let content = header;
-
-  if (packages && packages.length > 0) {
-    // Monorepo: generate per-package sections
-    for (const pkg of packages) {
-      const specName = sanitizePkgName(pkg.name);
-      content += `\n### Package: ${pkg.name} (\`spec/${specName}/\`)\n`;
-      if (pkg.type === "unknown") {
-        content += `\n- No layer templates were installed because this package type could not be detected.\n`;
-      } else {
-        if (pkg.type !== "frontend") {
-          content += `\n- Backend guidelines: \`.trellis/spec/${specName}/backend/\`\n`;
-        }
-        if (pkg.type !== "backend") {
-          content += `\n- Frontend guidelines: \`.trellis/spec/${specName}/frontend/\`\n`;
-        }
-      }
-    }
-  } else if (projectType === "frontend") {
-    content += frontendSection;
-  } else if (projectType === "backend") {
-    content += backendSection;
-  } else if (projectType === "unknown") {
-    content += `
-
-No backend or frontend templates were installed because the project type could not be detected. Add spec files under \`.trellis/spec/\` when the stack is known.
-`;
-  } else {
-    // fullstack
-    content += backendSection;
-    content += frontendSection;
-  }
   content += footer;
 
   return content;

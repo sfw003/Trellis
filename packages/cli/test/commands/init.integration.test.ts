@@ -1011,28 +1011,30 @@ describe("init() integration", () => {
     expect(Object.keys(hashes).length).toBeGreaterThan(0);
   });
 
-  it("#10 unknown project init leaves backend and frontend specs absent", async () => {
+  it("#10 unknown project init writes only spec.md", async () => {
     await init({ yes: true });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
+    expect(fs.existsSync(path.join(specDir, "spec.md"))).toBe(true);
     expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "frontend"))).toBe(false);
-    expect(fs.existsSync(path.join(specDir, "guides", "index.md"))).toBe(true);
+    expect(fs.existsSync(path.join(specDir, "guides"))).toBe(false);
   });
 
-  it("#11 backend project init skips frontend spec templates", async () => {
+  it("#11 backend project init writes only spec.md", async () => {
     // go.mod triggers detectProjectType → "backend"
     fs.writeFileSync(path.join(tmpDir, "go.mod"), "module example.com/app\n");
 
     await init({ yes: true });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
-    expect(fs.existsSync(path.join(specDir, "backend", "index.md"))).toBe(true);
+    expect(fs.existsSync(path.join(specDir, "spec.md"))).toBe(true);
+    expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "frontend"))).toBe(false);
-    expect(fs.existsSync(path.join(specDir, "guides", "index.md"))).toBe(true);
+    expect(fs.existsSync(path.join(specDir, "guides"))).toBe(false);
   });
 
-  it("#12 frontend project init skips backend spec templates", async () => {
+  it("#12 frontend project init writes only spec.md", async () => {
     // vite.config.ts triggers detectProjectType → "frontend"
     fs.writeFileSync(
       path.join(tmpDir, "vite.config.ts"),
@@ -1042,11 +1044,10 @@ describe("init() integration", () => {
     await init({ yes: true });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
-    expect(fs.existsSync(path.join(specDir, "frontend", "index.md"))).toBe(
-      true,
-    );
+    expect(fs.existsSync(path.join(specDir, "spec.md"))).toBe(true);
+    expect(fs.existsSync(path.join(specDir, "frontend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
-    expect(fs.existsSync(path.join(specDir, "guides", "index.md"))).toBe(true);
+    expect(fs.existsSync(path.join(specDir, "guides"))).toBe(false);
   });
 
   // ===========================================================================
@@ -1077,7 +1078,7 @@ describe("init() integration", () => {
     }
   }
 
-  it("#13 monorepo: creates per-package spec directories", async () => {
+  it("#13 monorepo init writes only spec.md", async () => {
     // @app/web: vite.config.ts → frontend (package.json also present → still frontend)
     // @app/api: package.json + go.mod → fullstack (both indicators present)
     setupPnpmWorkspace(tmpDir, [
@@ -1092,28 +1093,10 @@ describe("init() integration", () => {
     await init({ yes: true });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
-    // Per-package spec dirs created with sanitized names (scope stripped)
-    expect(fs.existsSync(path.join(specDir, "web"))).toBe(true);
-    expect(fs.existsSync(path.join(specDir, "api"))).toBe(true);
-
-    // web: frontend (vite.config.ts) → has frontend/, no backend/
-    expect(
-      fs.existsSync(path.join(specDir, "web", "frontend", "index.md")),
-    ).toBe(true);
-    expect(fs.existsSync(path.join(specDir, "web", "backend"))).toBe(false);
-
-    // api: fullstack (package.json + go.mod) → has both backend/ and frontend/
-    expect(
-      fs.existsSync(path.join(specDir, "api", "backend", "index.md")),
-    ).toBe(true);
-    expect(
-      fs.existsSync(path.join(specDir, "api", "frontend", "index.md")),
-    ).toBe(true);
-
-    // Guides still created (shared)
-    expect(fs.existsSync(path.join(specDir, "guides", "index.md"))).toBe(true);
-
-    // Global backend/frontend should NOT exist (monorepo mode)
+    expect(fs.existsSync(path.join(specDir, "spec.md"))).toBe(true);
+    expect(fs.existsSync(path.join(specDir, "web"))).toBe(false);
+    expect(fs.existsSync(path.join(specDir, "api"))).toBe(false);
+    expect(fs.existsSync(path.join(specDir, "guides"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "frontend"))).toBe(false);
   });
@@ -1162,19 +1145,15 @@ describe("init() integration", () => {
     expect(taskJson.current_phase).toBeUndefined();
     expect(taskJson.next_action).toBeUndefined();
 
-    // relatedFiles point to spec/<name>/
-    expect(taskJson.relatedFiles).toContain(".trellis/spec/core/");
-    expect(taskJson.relatedFiles).toContain(".trellis/spec/ui/");
+    expect(taskJson.relatedFiles).toContain(".trellis/spec/spec.md");
 
-    // prd.md mentions packages + renders per-package checklist items
     const prd = fs.readFileSync(path.join(taskDir, "prd.md"), "utf-8");
     const expectedPythonCmd =
       process.platform === "win32" ? "python" : "python3";
-    expect(prd).toContain("core");
-    expect(prd).toContain("ui");
-    expect(prd).toContain("spec/");
-    expect(prd).toContain("- [ ] Fill guidelines for core");
-    expect(prd).toContain("- [ ] Fill guidelines for ui");
+    expect(prd).toContain("spec.md");
+    expect(prd).toContain(
+      "- [ ] Write project-wide rules in .trellis/spec/spec.md",
+    );
     expect(prd).toContain(
       `${expectedPythonCmd} ./.trellis/scripts/task.py finish`,
     );
@@ -1189,10 +1168,10 @@ describe("init() integration", () => {
     await init({ yes: true, monorepo: false });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
-    // Root has no stack indicators, so single-repo mode writes no layer specs
-    // and still skips the per-package dir.
+    expect(fs.existsSync(path.join(specDir, "spec.md"))).toBe(true);
     expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "frontend"))).toBe(false);
+    expect(fs.existsSync(path.join(specDir, "guides"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "a"))).toBe(false);
 
     // config.yaml should NOT have packages: section

@@ -124,7 +124,6 @@ def get_packages_info(repo_root: Path) -> list[dict]:
 
 def get_packages_section(repo_root: Path) -> str:
     """Build the PACKAGES section for text output."""
-    spec_dir = repo_root / DIR_WORKFLOW / DIR_SPEC
     pkg_info = get_packages_info(repo_root)
 
     lines: list[str] = []
@@ -132,20 +131,17 @@ def get_packages_section(repo_root: Path) -> str:
 
     if not pkg_info:
         lines.append("(single-repo mode)")
-        layers = _scan_spec_layers(spec_dir)
-        if layers:
-            lines.append(f"Spec layers: {', '.join(layers)}")
+        lines.append("Project spec: .trellis/spec/spec.md")
         return "\n".join(lines)
 
     default_pkg = get_default_package(repo_root)
 
     for pkg in pkg_info:
-        layers_str = f"  [{', '.join(pkg['specLayers'])}]" if pkg["specLayers"] else ""
         submodule_tag = "  (submodule)" if pkg["isSubmodule"] else ""
         git_repo_tag = "  (git repo)" if pkg["isGitRepo"] else ""
         default_tag = "  *" if pkg["default"] else ""
         lines.append(
-            f"- {pkg['name']:<16} {pkg['path']:<20}{layers_str}{submodule_tag}{git_repo_tag}{default_tag}"
+            f"- {pkg['name']:<16} {pkg['path']:<20}{submodule_tag}{git_repo_tag}{default_tag}"
         )
 
     if default_pkg:
@@ -163,12 +159,10 @@ def get_context_packages_text(repo_root: Path | None = None) -> str:
     lines: list[str] = []
 
     if not pkg_info:
-        spec_dir = repo_root / DIR_WORKFLOW / DIR_SPEC
         lines.append("Single-repo project (no packages configured)")
         lines.append("")
-        layers = _scan_spec_layers(spec_dir)
-        if layers:
-            lines.append(f"Spec layers: {', '.join(layers)}")
+        lines.append("### Project spec")
+        lines.append("Path: .trellis/spec/spec.md")
         return "\n".join(lines)
 
     # Resolve scope for annotations
@@ -192,20 +186,11 @@ def get_context_packages_text(repo_root: Path | None = None) -> str:
 
         lines.append(f"### {pkg['name']}{default_tag}{type_tag}{git_tag}{scope_tag}")
         lines.append(f"Path: {pkg['path']}")
-        if pkg["specLayers"]:
-            lines.append(f"Spec layers: {', '.join(pkg['specLayers'])}")
-            for layer in pkg["specLayers"]:
-                lines.append(f"  - .trellis/spec/{pkg['name']}/{layer}/index.md")
-        else:
-            lines.append("Spec: not configured")
         lines.append("")
 
-    # Also show shared guides
-    guides_dir = repo_root / DIR_WORKFLOW / DIR_SPEC / "guides"
-    if guides_dir.is_dir():
-        lines.append("### Shared Guides (always included)")
-        lines.append("Path: .trellis/spec/guides/index.md")
-        lines.append("")
+    lines.append("### Project spec")
+    lines.append("Path: .trellis/spec/spec.md")
+    lines.append("")
 
     return "\n".join(lines)
 

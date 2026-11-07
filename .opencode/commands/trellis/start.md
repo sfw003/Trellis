@@ -22,16 +22,12 @@ python3 ./.trellis/scripts/get_context.py --mode phase
 
 Full guide in `.trellis/workflow.md` (read on demand).
 
-## Step 3: Guideline indexes
-Discover packages + spec layers, then read each relevant index file.
+## Step 3: Project spec
+Read `.trellis/spec/spec.md`. It is the only spec file. Session start already includes it on hosts that have a session hook.
 
 ```bash
-python3 ./.trellis/scripts/get_context.py --mode packages
-cat .trellis/spec/guides/index.md
-cat .trellis/spec/<package>/<layer>/index.md   # for each relevant layer
+cat .trellis/spec/spec.md
 ```
-
-Index files list the specific guideline docs to read when you actually start coding.
 
 ## Step 4: Decide next action
 From Step 1 you know the current task and status. Check the task directory:
@@ -53,7 +49,5 @@ From Step 1 you know the current task and status. Check the task directory:
 | New feature / unclear requirements | `trellis-brainstorm` |
 | About to write code | `trellis-before-dev` |
 | Done coding / quality check | `trellis-check` |
-| Stuck / fixed same bug multiple times | `trellis-break-loop` |
-| Learned something worth capturing | `trellis-update-spec` |
 
 Full rules + anti-rationalization table in `.trellis/workflow.md`.
