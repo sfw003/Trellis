@@ -1011,14 +1011,12 @@ describe("init() integration", () => {
     expect(Object.keys(hashes).length).toBeGreaterThan(0);
   });
 
-  it("#10 creates spec templates for backend, frontend, and guides", async () => {
+  it("#10 unknown project init leaves backend and frontend specs absent", async () => {
     await init({ yes: true });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
-    expect(fs.existsSync(path.join(specDir, "backend", "index.md"))).toBe(true);
-    expect(fs.existsSync(path.join(specDir, "frontend", "index.md"))).toBe(
-      true,
-    );
+    expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
+    expect(fs.existsSync(path.join(specDir, "frontend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "guides", "index.md"))).toBe(true);
   });
 
@@ -1191,11 +1189,10 @@ describe("init() integration", () => {
     await init({ yes: true, monorepo: false });
 
     const specDir = path.join(tmpDir, PATHS.SPEC);
-    // Single-repo spec (global backend + frontend), no per-package dirs
-    expect(fs.existsSync(path.join(specDir, "backend", "index.md"))).toBe(true);
-    expect(fs.existsSync(path.join(specDir, "frontend", "index.md"))).toBe(
-      true,
-    );
+    // Root has no stack indicators, so single-repo mode writes no layer specs
+    // and still skips the per-package dir.
+    expect(fs.existsSync(path.join(specDir, "backend"))).toBe(false);
+    expect(fs.existsSync(path.join(specDir, "frontend"))).toBe(false);
     expect(fs.existsSync(path.join(specDir, "a"))).toBe(false);
 
     // config.yaml should NOT have packages: section

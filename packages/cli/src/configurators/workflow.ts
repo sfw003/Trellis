@@ -255,6 +255,10 @@ async function writeSpecForType(
   specBase: string,
   projectType: ProjectType,
 ): Promise<void> {
+  // An undetected project has no stack to scaffold. Leave the layer dirs absent.
+  if (projectType === "unknown") {
+    return;
+  }
   if (projectType !== "frontend") {
     await writeBackendDocs(specBase);
   }
@@ -295,10 +299,10 @@ async function createSpecTemplates(
     for (const pkg of packages) {
       const dirName = sanitizePkgName(pkg.name);
       if (remoteSpecPackages?.has(dirName)) continue;
+      if (pkg.type === "unknown") continue;
       const pkgSpecBase = path.join(cwd, `${PATHS.SPEC}/${dirName}`);
       ensureDir(pkgSpecBase);
-      const pkgType = pkg.type === "unknown" ? "fullstack" : pkg.type;
-      await writeSpecForType(pkgSpecBase, pkgType);
+      await writeSpecForType(pkgSpecBase, pkg.type);
     }
   } else {
     // Single-repo mode

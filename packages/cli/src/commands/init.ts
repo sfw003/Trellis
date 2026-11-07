@@ -361,6 +361,9 @@ function getBootstrapChecklistItems(
   if (projectType === "backend") {
     return ["Fill backend guidelines", "Add code examples"];
   }
+  if (projectType === "unknown") {
+    return ["Add spec layers when the project stack is known"];
+  }
   return [
     "Fill backend guidelines",
     "Fill frontend guidelines",
@@ -380,6 +383,9 @@ function getBootstrapRelatedFiles(
   }
   if (projectType === "backend") {
     return [".trellis/spec/backend/"];
+  }
+  if (projectType === "unknown") {
+    return [".trellis/spec/"];
   }
   return [".trellis/spec/backend/", ".trellis/spec/frontend/"];
 }
@@ -544,20 +550,28 @@ etc.) I can pull from, or should I scan the codebase from scratch?"
   if (packages && packages.length > 0) {
     // Monorepo: generate per-package sections
     for (const pkg of packages) {
-      const pkgType = pkg.type === "unknown" ? "fullstack" : pkg.type;
       const specName = sanitizePkgName(pkg.name);
       content += `\n### Package: ${pkg.name} (\`spec/${specName}/\`)\n`;
-      if (pkgType !== "frontend") {
-        content += `\n- Backend guidelines: \`.trellis/spec/${specName}/backend/\`\n`;
-      }
-      if (pkgType !== "backend") {
-        content += `\n- Frontend guidelines: \`.trellis/spec/${specName}/frontend/\`\n`;
+      if (pkg.type === "unknown") {
+        content += `\n- No layer templates were installed because this package type could not be detected.\n`;
+      } else {
+        if (pkg.type !== "frontend") {
+          content += `\n- Backend guidelines: \`.trellis/spec/${specName}/backend/\`\n`;
+        }
+        if (pkg.type !== "backend") {
+          content += `\n- Frontend guidelines: \`.trellis/spec/${specName}/frontend/\`\n`;
+        }
       }
     }
   } else if (projectType === "frontend") {
     content += frontendSection;
   } else if (projectType === "backend") {
     content += backendSection;
+  } else if (projectType === "unknown") {
+    content += `
+
+No backend or frontend templates were installed because the project type could not be detected. Add spec files under \`.trellis/spec/\` when the stack is known.
+`;
   } else {
     // fullstack
     content += backendSection;
@@ -1462,9 +1476,7 @@ export async function init(options: InitOptions): Promise<void> {
     tools = answers.tools;
   }
 
-  // Treat unknown project type as fullstack
-  const projectType: ProjectType =
-    detectedType === "unknown" ? "fullstack" : detectedType;
+  const projectType: ProjectType = detectedType;
 
   if (tools.length === 0) {
     console.log(
