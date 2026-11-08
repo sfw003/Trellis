@@ -88,5 +88,6 @@ jobs:
         if: steps.plan.outputs.cli_publish != 'true'
         run: echo "@sfw003/trellis@${{ steps.plan.outputs.version }} already published; skipping."
 
+      # verify-npm retries for ~10 minutes. npm can E404 while it processes a publish.
       - name: Verify published packages on public npm
         run: node packages/cli/scripts/release-preflight.js verify-npm --package all

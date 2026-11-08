@@ -38,13 +38,30 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Setup minimum supported Python
-        uses: actions/setup-python@v7
+      # CPython 3.9 is the documented minimum (macOS system Python, pyright,
+      # script conventions). actions/setup-python has no 3.9 build for
+      # Ubuntu 26.04, which is what ubuntu-latest runs, so install it with uv.
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
-          python-version: "3.9"
+          enable-cache: "false"
+
+      - name: Setup minimum supported Python
+        run: |
+          set -euo pipefail
+          uv python install 3.9
+          py="$(uv python find 3.9)"
+          "$py" -c 'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 9) else 1)'
+          bindir="$RUNNER_TEMP/python-bin"
+          mkdir -p "$bindir"
+          ln -sfn "$py" "$bindir/python"
+          ln -sfn "$py" "$bindir/python3"
+          echo "$bindir" >> "$GITHUB_PATH"
 
       - name: Check Python 3.9 syntax
         run: |
+          set -euo pipefail
+          python -c 'import sys; assert sys.version_info[:2] == (3, 9), sys.version'
           export PYTHONPYCACHEPREFIX="$RUNNER_TEMP/trellis-pycache"
           git ls-files -z --recurse-submodules '*.py' | xargs -0 python -m py_compile
 
