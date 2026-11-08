@@ -45,8 +45,10 @@ python3 ./.trellis/scripts/task.py list [--mine] [--status <s>]
 python3 ./.trellis/scripts/task.py list-archive
 
 # Code-spec context (injected into implement/check agents via JSONL).
-# `implement.jsonl` / `check.jsonl` are seeded on `task create` for sub-agent-capable
-# platforms; the AI curates real spec + research entries during planning when needed.
+# `implement.jsonl` / `check.jsonl` are seeded (empty) on `task create` for sub-agent-capable
+# platforms; the AI curates real spec + research entries during planning. `validate` fails
+# and `start` refuses while a seeded manifest is still empty — sub-agents would run with
+# zero spec context. Pass `start --allow-empty-context` when that is intentional.
 python3 ./.trellis/scripts/task.py add-context <name> <action> <file> <reason>
 python3 ./.trellis/scripts/task.py list-context <name> [action]
 python3 ./.trellis/scripts/task.py validate <name>
@@ -112,6 +114,7 @@ python3 ./.trellis/scripts/get_context.py --mode phase --step <X.Y>  # detailed 
 
   TAG ↔ PHASE scoping:
     [workflow-state:no_task]      → no active task; before Phase 1
+    [workflow-state:task_error]   → active task record is unreadable; repair it before continuing
     [workflow-state:planning]     → all of Phase 1 (status='planning')
     [workflow-state:planning-inline] → Codex inline variant of Phase 1
     [workflow-state:in_progress]  → Phase 2 + Phase 3.2-3.4
@@ -172,6 +175,14 @@ Simple conversation / small task: ask only whether this turn should create a Tre
 Complex task: ask the user if you can create a Trellis task and enter the planning phase. If the user says no, explain, clarify scope, or suggest a smaller split.
 [/workflow-state:no_task]
 
+<!-- Per-turn breadcrumb: shown when the active task record cannot be read. -->
+
+[workflow-state:task_error]
+The active task record could not be read. Do not create or activate another task.
+Inspect the task directory named above and repair its task.json. It must be a valid JSON object with a non-empty status.
+Preserve existing task fields and artifacts. If the correct status cannot be determined safely, ask the user before reconstructing the record.
+[/workflow-state:task_error]
+
 ### Phase 1: Plan
 - 1.0 Create task `[required · once]` (only after task-creation consent)
 - 1.1 Requirement exploration `[required · repeatable]` (`prd.md`; complex tasks also need `design.md` + `implement.md`)
@@ -217,9 +228,10 @@ Sub-agent dispatch protocol applies to all platforms and all sub-agents, includi
 
 [workflow-state:in_progress]
 Tools: `trellis-implement` / `trellis-research` are sub-agent types only (Task/Agent tool, NOT Skill; there is no skill by these names). `trellis-check` exists as both; prefer the Agent form when verifying after code changes.
-Flow: `trellis-implement` -> `trellis-check` -> commit (Phase 3.4). Do not run `/trellis:finish-work` unless the user asks. Do not review the task for a spec or a skill unless the user asks.
+Execution pace: print the stage plan from `implement.md`. Skip the question and implement directly when there is no stage split or only one stage, or when the user already said to just do the work. Record `Execution mode: all-at-once` when skipping. Otherwise, before the first code edit, ask the user to choose `all-at-once` or `per-stage`. Ask in the user's language. Do not write code until they answer. Record the choice at the top of `implement.md`. If that line exists, follow it and do not ask again. `per-stage` implements only the next unfinished stage, then stops so the user can commit, push, and review. `all-at-once` implements every remaining stage.
+Flow: chosen scope via `trellis-implement` -> `trellis-check` -> commit (Phase 3.4) when that scope is finished. Do not run `/trellis:finish-work` unless the user asks. Do not review the task for a spec or a skill unless the user asks.
 Main-session default: dispatch implement/check sub-agents. Sub-agent self-exemption: if already running as `trellis-implement`, do NOT spawn another `trellis-implement` or `trellis-check`; if already running as `trellis-check`, do NOT spawn another `trellis-check` or `trellis-implement`. Dispatch is main session only.
-Dispatch prompt starts with `Active task: <task path from task.py current>`. Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
+Dispatch prompt starts with `Active task: <task path from task.py current>` and names the chosen scope (all remaining stages, or only the next unfinished stage). Read context: jsonl entries -> `prd.md` -> `design.md if present` -> `implement.md if present`.
 [/workflow-state:in_progress]
 
 <!-- Per-turn breadcrumb: shown while status='in_progress' when
@@ -228,7 +240,8 @@ Dispatch prompt starts with `Active task: <task path from task.py current>`. Rea
      instead of dispatching sub-agents. -->
 
 [workflow-state:in_progress-inline]
-Flow: `trellis-before-dev` -> edit -> `trellis-check` -> validation -> commit (Phase 3.4). Do not run `/trellis:finish-work` unless the user asks. Do not review the task for a spec or a skill unless the user asks.
+Execution pace: print the stage plan from `implement.md`. Skip the question and implement directly when there is no stage split or only one stage, or when the user already said to just do the work. Record `Execution mode: all-at-once` when skipping. Otherwise, before the first code edit, ask the user to choose `all-at-once` or `per-stage`. Ask in the user's language. Do not write code until they answer. Record the choice at the top of `implement.md`. If that line exists, follow it and do not ask again. `per-stage` implements only the next unfinished stage, then stops so the user can commit, push, and review. `all-at-once` implements every remaining stage.
+Flow: `trellis-before-dev` -> edit the chosen scope -> `trellis-check` -> validation -> commit (Phase 3.4) when that scope is finished. Do not run `/trellis:finish-work` unless the user asks. Do not review the task for a spec or a skill unless the user asks.
 Do not dispatch implement/check sub-agents in inline mode.
 Read context: `prd.md` -> `design.md if present` -> `implement.md if present`, plus relevant spec/research loaded by skills.
 [/workflow-state:in_progress-inline]
@@ -435,7 +448,7 @@ python3 ./.trellis/scripts/task.py start <task-dir>
 
 For lightweight tasks, `prd.md` can be enough. For complex tasks, `prd.md`, `design.md`, and `implement.md` must exist and be reviewed before start. On sub-agent-dispatch platforms, `implement.jsonl` and `check.jsonl` must both have real curated entries before start. Runtime consumers tolerate missing or seed-only manifests for compatibility, but that tolerance is not a planning-ready state.
 
-After this command succeeds, the breadcrumb auto-switches to `[workflow-state:in_progress]`, and the rest of Phase 2 / 3 follows.
+After this command succeeds, the breadcrumb auto-switches to `[workflow-state:in_progress]`. Before any code, print the stage plan. If there is only one stage, or the user already said to just do the work, implement directly. Otherwise ask whether to run every remaining stage in one pass or stop after each stage, and wait for the answer.
 
 If `task.py start` errors with a session-identity message (no context key from hook input, `TRELLIS_CONTEXT_ID`, or platform-native session env), follow the hint in the error to set up session identity, then retry.
 
@@ -464,12 +477,28 @@ Goal: turn reviewed planning artifacts into code that passes quality checks.
 
 #### 2.1 Implement `[required · repeatable]`
 
+**Execution pace, before any code.** In the conversation, print the overall stage plan. Read the ordered stages from `implement.md`.
+
+Skip the question and implement directly when either is true:
+
+- There is no stage split, or only one stage.
+- The user already said to just do the work, such as "直接做" or an instruction to implement without stopping between stages.
+
+When skipping, record `Execution mode: all-at-once` if that line is missing, then implement. Otherwise ask the user, in their language, to choose:
+
+- `all-at-once` — implement every remaining stage in this pass, then quality-check and commit once.
+- `per-stage` — implement only the next unfinished stage, then stop. Tell the user this stage is ready to commit and push for review. Do not start the next stage until the user says to continue.
+
+Do not write code, and do not dispatch an implement sub-agent, until the user answers, unless a skip rule above applies. Record an answer at the top of `implement.md` as `Execution mode: all-at-once` or `Execution mode: per-stage`. Create `implement.md` when the task does not have one. If that line is already there, follow it and do not ask again.
+
+When dispatching, the task description must name the chosen scope: all remaining stages, or only the next unfinished stage.
+
 [Claude Code, Cursor, OpenCode, codex-sub-agent, CodeBuddy, Droid, Pi, ZCode, Snow, Oh My Pi]
 
 Spawn the implement sub-agent:
 
 - **Agent type**: `trellis-implement`
-- **Task description**: Implement the reviewed task artifacts, consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
+- **Task description**: Implement the scope named by `Execution mode` in `implement.md` (all remaining stages, or only the next unfinished stage), consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
 - **Dispatch prompt guard**: The prompt MUST start with `Active task: <task path>`, then tell the spawned agent it is already the `trellis-implement` sub-agent and must implement directly, not spawn another `trellis-implement` / `trellis-check`.
 
 The platform hook/plugin auto-handles:
@@ -484,7 +513,7 @@ The platform hook/plugin auto-handles:
 Spawn the implement sub-agent:
 
 - **Agent type**: `trellis-implement`
-- **Task description**: Implement the reviewed task artifacts, consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
+- **Task description**: Implement the scope named by `Execution mode` in `implement.md` (all remaining stages, or only the next unfinished stage), consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
 - **Dispatch prompt guard**: The prompt MUST start with `Active task: <task path>`, then explicitly say the spawned agent is already `trellis-implement` and must implement directly without spawning another `trellis-implement` / `trellis-check`.
 
 The pull-based sub-agent definition auto-handles the context load requirement:
@@ -498,7 +527,7 @@ The pull-based sub-agent definition auto-handles the context load requirement:
 Spawn the implement sub-agent:
 
 - **Agent type**: `trellis-implement`
-- **Task description**: Implement the reviewed task artifacts, consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
+- **Task description**: Implement the scope named by `Execution mode` in `implement.md` (all remaining stages, or only the next unfinished stage), consulting materials under `{TASK_DIR}/research/`; finish by running project lint and type-check
 - **Dispatch prompt guard**: Tell the spawned agent it is already the `trellis-implement` sub-agent and must implement directly, not spawn another `trellis-implement` / `trellis-check`.
 
 The platform prelude auto-handles the context load requirement:
@@ -512,7 +541,7 @@ The platform prelude auto-handles the context load requirement:
 1. Load the `trellis-before-dev` skill to read project guidelines
 2. Read `{TASK_DIR}/prd.md`, then `design.md` if present, then `implement.md` if present
 3. Consult materials under `{TASK_DIR}/research/`
-4. Implement the code per reviewed artifacts
+4. Implement the scope named by `Execution mode` (all remaining stages, or only the next unfinished stage)
 5. Run project lint and type-check
 
 [/codex-inline, Kilo, Antigravity, Devin, DeepSeek Harness]
@@ -632,6 +661,7 @@ All tag blocks live in the `## Phase Index` section above, immediately after eac
 | Scope | Corresponding tag |
 |---|---|
 | No active task (before Phase 1) | `[workflow-state:no_task]` (after the Phase Index ASCII art) |
+| Active task record unreadable | `[workflow-state:task_error]` (repair the existing task before continuing) |
 | All of Phase 1 (task created → ready for implementation) | `[workflow-state:planning]` (after Phase 1 summary) |
 | Codex inline Phase 1 | `[workflow-state:planning-inline]` |
 | Phase 2 + Phase 3.2–3.4 (implementation + check + wrap-up) | `[workflow-state:in_progress]` (after Phase 2 summary) |

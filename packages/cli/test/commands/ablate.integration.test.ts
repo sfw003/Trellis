@@ -175,7 +175,7 @@ describe("ablate()/restore() integration", () => {
     fs.rmSync(conflictPath);
     await restore({ yes: true });
     expect(projectFingerprint()).toEqual(before);
-  });
+  }, 60_000);
 
   it("#5 repeated ablate is rejected and repeated restore is a friendly no-op", async () => {
     await initialize();

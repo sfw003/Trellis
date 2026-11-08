@@ -28,7 +28,10 @@ Shows the Phase Index (Plan / Execute / Finish) with routing + skill mapping.
 - `status=planning` + `prd.md` only → decide whether the task is lightweight or complex. Lightweight can move to **1.4** review; complex returns to **1.1** to add `design.md` + `implement.md`.
 - `status=planning` + complex artifacts complete + sub-agent jsonl not curated (empty, or only a legacy `_example` placeholder row) → **1.3**
 - `status=planning` + required artifacts complete + required jsonl curated or inline mode → **1.4** (ask for start review; only run `task.py start` after user confirms)
-- `status=in_progress` + implementation not started → **2.1**
+- `status=in_progress` + no `Execution mode:` recorded → **2.1** pace gate: print the stage plan; ask all-at-once vs per-stage only when there are two or more stages and the user has not already said to just do the work
+- `status=in_progress` + `Execution mode: per-stage` and the current stage is unfinished → **2.1** for that stage only
+- `status=in_progress` + `Execution mode: per-stage` and the current stage is finished → stop, offer commit, and wait before the next stage
+- `status=in_progress` + `Execution mode: all-at-once` + implementation not started → **2.1**
 - `status=in_progress` + implementation done, not yet checked → **2.2**
 - `status=in_progress` + check passed → **3.4** (commit)
 - `status=completed` (rare; usually archived immediately) → archive flow
@@ -47,7 +50,7 @@ Once you know which step to resume at:
 python3 ./.trellis/scripts/get_context.py --mode phase --step <X.X> --platform pi
 ```
 
-Follow the loaded instructions. After each `[required]` step completes, move to the next.
+Follow the loaded instructions. After each `[required]` step completes, move to the next. If `Execution mode: per-stage` and the current stage just finished, stop after offering a commit. Do not start the next stage until the user says to continue.
 
 ---
 

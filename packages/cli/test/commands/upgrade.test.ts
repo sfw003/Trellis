@@ -36,10 +36,10 @@ describe("upgrade command", () => {
       buildUpgradeCommand({ tag: "beta" }, "0.5.12", "darwin"),
     ).toMatchObject({
       command: "npm",
-      args: ["install", "-g", "@mindfoldhq/trellis@beta"],
+      args: ["install", "-g", "@sfw003/trellis@beta"],
       spawnOptions: { stdio: "inherit", shell: false },
-      displayCommand: "npm install -g @mindfoldhq/trellis@beta",
-      target: "@mindfoldhq/trellis@beta",
+      displayCommand: "npm install -g @sfw003/trellis@beta",
+      target: "@sfw003/trellis@beta",
       tag: "beta",
       binaryCheckCommand: "which trellis",
     });
@@ -50,10 +50,10 @@ describe("upgrade command", () => {
       buildUpgradeCommand({ tag: "beta" }, "0.5.12", "win32"),
     ).toMatchObject({
       command: "cmd.exe",
-      args: ["/d", "/s", "/c", "npm install -g @mindfoldhq/trellis@beta"],
+      args: ["/d", "/s", "/c", "npm install -g @sfw003/trellis@beta"],
       spawnOptions: { stdio: "inherit", shell: false },
-      displayCommand: "npm install -g @mindfoldhq/trellis@beta",
-      target: "@mindfoldhq/trellis@beta",
+      displayCommand: "npm install -g @sfw003/trellis@beta",
+      target: "@sfw003/trellis@beta",
       tag: "beta",
       binaryCheckCommand: "where trellis",
     });
@@ -67,7 +67,7 @@ describe("upgrade command", () => {
 
     expect(runner).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining("Run: npm install -g @mindfoldhq/trellis@latest"),
+      expect.stringContaining("Run: npm install -g @sfw003/trellis@latest"),
     );
 
     log.mockRestore();
@@ -79,15 +79,18 @@ describe("upgrade command", () => {
 
     await upgrade({ tag: "latest" }, runner);
 
+    const plan = buildUpgradeCommand({ tag: "latest" });
     expect(runner).toHaveBeenCalledWith(
-      "npm",
-      ["install", "-g", "@mindfoldhq/trellis@latest"],
-      { stdio: "inherit", shell: false },
+      plan.command,
+      plan.args,
+      plan.spawnOptions,
     );
     expect(log).toHaveBeenCalledWith(
       expect.stringContaining("trellis --version"),
     );
-    expect(log).toHaveBeenCalledWith(expect.stringContaining("which trellis"));
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining(plan.binaryCheckCommand),
+    );
 
     log.mockRestore();
   });
@@ -96,8 +99,13 @@ describe("upgrade command", () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const runner = vi.fn(() => ({ status: 1, signal: null }));
 
+    const plan = buildUpgradeCommand({ tag: "latest" });
+    const escapeRegExp = (value: string) =>
+      value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     await expect(upgrade({ tag: "latest" }, runner)).rejects.toThrow(
-      /npm install failed with exit code 1\.[\s\S]*Troubleshooting:[\s\S]*Manual command: npm install -g @mindfoldhq\/trellis@latest[\s\S]*npm config get prefix[\s\S]*which trellis/,
+      new RegExp(
+        `npm install failed with exit code 1\\.[\\s\\S]*Troubleshooting:[\\s\\S]*Manual command: ${escapeRegExp(plan.displayCommand)}[\\s\\S]*npm config get prefix[\\s\\S]*${escapeRegExp(plan.binaryCheckCommand)}`,
+      ),
     );
 
     log.mockRestore();

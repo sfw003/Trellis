@@ -7628,8 +7628,13 @@ print(len(entries))
       "nested_orphan = '[workflow-state:planning]\\nbody1\\n[/workflow-state:other]\\ntail\\n[/workflow-state:planning]'",
       "result = {'M': mod._strip_breadcrumb_tag_blocks(matched), 'X': mod._strip_breadcrumb_tag_blocks(mismatched), 'N': mod._strip_breadcrumb_tag_blocks(nested_orphan)}",
       "print(json.dumps(result))",
-    ].join("; ");
-    const output = execSync(`${pythonCmd} -c ${JSON.stringify(probe)}`, {
+    ].join("\n");
+    // Write a file. `python -c` through cmd.exe does not preserve the
+    // same backslash escaping as a POSIX shell, so the probe's `\n`
+    // never reached Python as a newline.
+    const probePath = path.join(tmpDir, "strip-breadcrumb-probe.py");
+    fs.writeFileSync(probePath, probe, "utf-8");
+    const output = execSync(`${pythonCmd} ${JSON.stringify(probePath)}`, {
       cwd: tmpDir,
       encoding: "utf-8",
     });

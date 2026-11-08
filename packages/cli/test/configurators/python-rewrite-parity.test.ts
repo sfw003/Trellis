@@ -98,6 +98,8 @@ describe("python3 rewrite reaches the previously-raw write sites", () => {
   it("leaves the literal alone under the default (POSIX) rendering", async () => {
     // Guards the test itself: proves the injected literal really reaches disk,
     // so the Windows case below is measuring the rewrite and not a dead mock.
+    // The host default on Windows is `python`, so pin POSIX rendering here.
+    setResolvedPythonCommand("python3");
     for (const [id, relPath] of RAW_WRITE_SITES) {
       const written = await configureInto(id, relPath);
       expect(written, `${id}: ${relPath}`).toContain(

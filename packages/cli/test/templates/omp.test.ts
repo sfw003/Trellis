@@ -58,7 +58,7 @@ function captureOmpHandlers(): Map<string, OmpEventHandler> {
 }
 
 function makeOmpProject(): { root: string; taskDir: string; sessionId: string } {
-  const root = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "trellis-omp-") );
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "trellis-omp-"));
   const taskDir = path.join(root, ".trellis", "tasks", "08-13-context-limits");
   const sessionId = "context_limits";
   fs.mkdirSync(path.join(root, ".trellis", ".runtime", "sessions"), { recursive: true });

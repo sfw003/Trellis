@@ -84,7 +84,12 @@ ${code}
   if (r.status !== 0) {
     throw new Error(`probe failed (rc=${r.status}): ${r.stderr}`);
   }
-  return r.stdout;
+  return normalizeStdout(r.stdout);
+}
+
+function normalizeStdout(stdout: string): string {
+  // Python text stdout on Windows translates `\n` to `\r\n`.
+  return stdout.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
 function runConfigProbe(tmp: string, code: string): string {
@@ -105,7 +110,7 @@ ${code}
   if (r.status !== 0) {
     throw new Error(`probe failed (rc=${r.status}): ${r.stderr}`);
   }
-  return r.stdout;
+  return normalizeStdout(r.stdout);
 }
 
 function makeTask(tmp: string, dirName: string): string {

@@ -38,13 +38,18 @@ describe("writeFileAtomic", () => {
     fs.mkdirSync(roDir);
     const target = path.join(roDir, "x.json");
     writeFileAtomic(target, "first");
-    fs.chmodSync(roDir, 0o500); // read+execute only, no write
+    // Unix refuses the temp write when the directory is not writable.
+    // Windows ignores that mode on directories, but a read-only target
+    // makes the replacing rename fail. Set both so either platform throws.
+    fs.chmodSync(target, 0o444);
+    fs.chmodSync(roDir, 0o500);
     try {
       expect(() => writeFileAtomic(target, "second")).toThrow();
       // Original survives; no half-written temp left in the dir.
       expect(fs.readFileSync(target, "utf-8")).toBe("first");
       expect(fs.readdirSync(roDir)).toEqual(["x.json"]);
     } finally {
+      fs.chmodSync(target, 0o644);
       fs.chmodSync(roDir, 0o700);
     }
   });

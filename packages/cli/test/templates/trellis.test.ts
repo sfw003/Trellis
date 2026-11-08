@@ -131,15 +131,17 @@ describe("trellis template constants", () => {
     expect(workflowMdTemplate).toContain("#");
   });
 
-  it("marketplace native workflow mirror matches the bundled workflow", () => {
-    const repoRoot = fs.existsSync(path.join(process.cwd(), "marketplace"))
+  it("dogfood workflow matches the bundled workflow", () => {
+    const repoRoot = fs.existsSync(path.join(process.cwd(), ".trellis"))
       ? process.cwd()
       : path.resolve(process.cwd(), "../..");
-    const marketplaceNative = fs.readFileSync(
-      path.join(repoRoot, "marketplace/workflows/native/workflow.md"),
+    const dogfood = fs.readFileSync(
+      path.join(repoRoot, ".trellis/workflow.md"),
       "utf-8",
     );
-    expect(marketplaceNative).toBe(workflowMdTemplate);
+    // Windows checkout may rewrite the file to CRLF. Compare the text.
+    const normalize = (value: string) => value.replace(/\r\n/g, "\n");
+    expect(normalize(dogfood)).toBe(normalize(workflowMdTemplate));
   });
 
   it("marketplace TDD workflow planning breadcrumbs include behavior gates", () => {

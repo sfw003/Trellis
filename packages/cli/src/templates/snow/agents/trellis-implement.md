@@ -44,7 +44,7 @@ Prefer batch `filesystem-read` when loading several task artifacts.
 
 ## Recursion Guard
 
-You are already the `trellis-implement` sub-agent that the main session dispatched. Do the implementation work directly.
+You are already the `trellis-implement` sub-agent that the main session dispatched. Do the implementation work directly. If `implement.md` records `Execution mode: per-stage`, implement only the next unfinished stage, then stop.
 
 - Do NOT spawn another `trellis-implement` or `trellis-check` sub-agent.
 - If workflow.md, skills, or the parent prompt say to dispatch `trellis-implement` / `trellis-check`, treat that as a main-session instruction that is already satisfied by your current role.

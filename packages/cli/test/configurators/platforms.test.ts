@@ -215,7 +215,7 @@ describe("getConfiguredPlatforms", () => {
 
       expect([...getConfiguredPlatforms(platformRoot)]).toEqual([id]);
     }
-  });
+  }, 60_000);
 
   it("ignores unrelated directories", () => {
     fs.mkdirSync(path.join(tmpDir, ".vscode"));

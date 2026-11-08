@@ -28,7 +28,7 @@ Before implementing, read:
 
 1. **Understand specs** - Read relevant spec files in `.trellis/spec/`
 2. **Understand task artifacts** - Read prd.md, design.md if present, and implement.md if present
-3. **Implement features** - Write code following specs and task artifacts
+3. **Implement features** - Write code following specs and task artifacts. If `implement.md` records `Execution mode: per-stage`, implement only the next unfinished stage, then stop.
 4. **Self-check** - Ensure code quality
 5. **Report results** - Report completion status
 
