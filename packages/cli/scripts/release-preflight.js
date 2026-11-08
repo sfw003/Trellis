@@ -33,7 +33,12 @@
  *                                    registry. Used after CI publish so a
  *                                    registry visibility problem fails the
  *                                    release pipeline instead of being fixed
- *                                    by a local publish.
+ *                                    by a local publish. npm can return E404
+ *                                    for several minutes after a successful
+ *                                    publish while it processes the package,
+ *                                    so this retries with backoff before
+ *                                    failing. The version and dist-tag must
+ *                                    still match exactly.
  *
  * Idempotency rule: a CI rerun on the same tag must not republish an
  * already-published version, but must also never silently paper over a
@@ -117,19 +122,68 @@ async function sleep(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function retry(label, fn) {
-  const attempts = 6;
+// npm's own publish log says a new version "may take a few minutes to become
+// available." Six attempts at 10s (the old window) lost the 0.6.18 publish
+// while the registry was still returning E404. Wait long enough to cover
+// that processing delay, then still fail if the version or dist-tag is wrong.
+export const VERIFY_NPM_ATTEMPTS = 12;
+const VERIFY_NPM_BASE_DELAY_MS = 15_000;
+const VERIFY_NPM_MAX_DELAY_MS = 60_000;
+
+export function verifyNpmRetryDelayMs(failedAttempt) {
+  return Math.min(
+    VERIFY_NPM_BASE_DELAY_MS * 2 ** (failedAttempt - 1),
+    VERIFY_NPM_MAX_DELAY_MS,
+  );
+}
+
+export function summarizeCommandError(err) {
+  const stderr = err?.stderr?.toString?.() ?? "";
+  const lines = stderr
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const interesting =
+    lines.find((line) => /not in this registry/i.test(line)) ||
+    lines.find((line) =>
+      /E404|not found|ETIMEDOUT|ECONNRESET|ENOTFOUND|EAI_AGAIN/i.test(line),
+    ) ||
+    lines.find((line) => /^npm error\b/i.test(line)) ||
+    lines.at(-1);
+  if (interesting) return interesting.slice(0, 300);
+  const message = (err?.message ? String(err.message) : String(err)).split(
+    /\r?\n/,
+  )[0];
+  return message.slice(0, 300);
+}
+
+export async function retryUntilVisible(label, fn, options = {}) {
+  const sleepFn = options.sleepFn ?? sleep;
+  const log = options.log ?? console.error;
   let lastError;
-  for (let i = 1; i <= attempts; i += 1) {
+  for (let attempt = 1; attempt <= VERIFY_NPM_ATTEMPTS; attempt += 1) {
+    log(
+      `${DIM}verify-npm: ${label} attempt ${attempt}/${VERIFY_NPM_ATTEMPTS}${RESET}`,
+    );
     try {
-      return fn();
+      return await fn();
     } catch (err) {
       lastError = err;
-      if (i === attempts) break;
-      console.error(
-        `${YELLOW}! ${label} not visible yet; retrying (${i}/${attempts})${RESET}`,
+      const reason = summarizeCommandError(err);
+      if (attempt === VERIFY_NPM_ATTEMPTS) {
+        log(
+          `${YELLOW}! ${label} still not visible after ${VERIFY_NPM_ATTEMPTS} attempts: ${reason}${RESET}`,
+        );
+        break;
+      }
+      const delay = verifyNpmRetryDelayMs(attempt);
+      log(
+        `${YELLOW}! ${label} not visible yet (attempt ${attempt}/${VERIFY_NPM_ATTEMPTS}): ${reason}${RESET}`,
       );
-      await sleep(10_000);
+      log(
+        `${DIM}  waiting ${Math.round(delay / 1000)}s before the next attempt${RESET}`,
+      );
+      await sleepFn(delay);
     }
   }
   throw lastError;
@@ -274,23 +328,35 @@ async function verifyNpm({ packageFilter }) {
   ].filter((pkg) => packageFilter === "all" || pkg.key === packageFilter);
 
   for (const pkg of packages) {
-    await retry(`${pkg.name}@${v.cliVersion}`, () => {
-      const version = npmViewJSON(`${pkg.name}@${v.cliVersion} version`);
-      if (version !== v.cliVersion) {
-        fail(
-          `${pkg.name}@${v.cliVersion} is not visible on the public npm registry.`,
+    const label = `${pkg.name}@${v.cliVersion}`;
+    try {
+      await retryUntilVisible(label, () => {
+        const version = npmViewJSON(`${pkg.name}@${v.cliVersion} version`);
+        if (version !== v.cliVersion) {
+          throw new Error(
+            `${label} is not visible on the public npm registry.`,
+          );
+        }
+        const taggedVersion = npmViewJSON(`${pkg.name}@${tag} version`);
+        if (taggedVersion !== v.cliVersion) {
+          throw new Error(
+            `${pkg.name}@${tag} resolves to ${taggedVersion ?? "nothing"}, expected ${v.cliVersion}.`,
+          );
+        }
+        console.log(
+          `${GREEN}ok${RESET} ${label} visible on npm tag "${tag}".`,
         );
-      }
-      const taggedVersion = npmViewJSON(`${pkg.name}@${tag} version`);
-      if (taggedVersion !== v.cliVersion) {
-        fail(
-          `${pkg.name}@${tag} resolves to ${taggedVersion ?? "nothing"}, expected ${v.cliVersion}.`,
-        );
-      }
-      console.log(
-        `${GREEN}ok${RESET} ${pkg.name}@${v.cliVersion} visible on npm tag "${tag}".`,
+      });
+    } catch (err) {
+      // Logical mismatches already carry the assertion text. npm view
+      // failures are exec errors whose message dumps the whole stderr.
+      const ownMessage =
+        err instanceof Error && err.stderr == null ? err.message : "";
+      fail(
+        ownMessage ||
+          `${label} is not visible on the public npm registry (${summarizeCommandError(err)}).`,
       );
-    });
+    }
   }
 }
 
@@ -342,4 +408,10 @@ async function main() {
   fail(`unknown command: ${cmd}`);
 }
 
-main();
+const isDirectRun =
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectRun) {
+  main();
+}

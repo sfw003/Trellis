@@ -55,7 +55,7 @@ Do **not** maintain a manual coverage table — always run `pnpm test:coverage` 
 | Stage | What Runs | Rationale |
 |-------|-----------|-----------|
 | **pre-commit** (husky) | `lint-staged` (eslint + prettier) | Keep fast; don't add tests here or developers will skip with `--no-verify` |
-| **CI** (GitHub Actions, PR gate) | Pin Python 3.9 → compile every tracked `.py` file → TypeScript + Python typecheck → `pnpm lint` → `pnpm build` → `pnpm test` | Parse all shipped scripts with the real minimum interpreter before running the suite, then enforce `basedpyright` so syntax and type regressions cannot hide in unexecuted templates |
+| **CI** (GitHub Actions, PR gate) | Install CPython 3.9 with uv → compile every tracked `.py` file → TypeScript + Python typecheck → `pnpm lint` → `pnpm build` → `pnpm test` | Parse all shipped scripts with the real minimum interpreter before running the suite. `actions/setup-python` has no 3.9 build for Ubuntu 26.04 (`ubuntu-latest`), so CI installs 3.9 with uv instead of raising the floor. Then enforce `basedpyright` so syntax and type regressions cannot hide in unexecuted templates |
 
 **When to reconsider**: If total test time exceeds 5 minutes, split into fast (unit) and slow (integration) stages. Currently unnecessary.
 

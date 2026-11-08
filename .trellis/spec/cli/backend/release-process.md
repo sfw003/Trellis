@@ -42,6 +42,8 @@ The publish workflow must verify both packages after publish with:
 node packages/cli/scripts/release-preflight.js verify-npm --package all
 ```
 
+`verify-npm` requires the exact published version and the computed dist-tag (`latest`, `beta`, `rc`, or `alpha`) to be visible on the public registry. npm can return `E404` for several minutes after a successful publish while it processes the package, so the command retries with backoff for about ten minutes and logs each attempt. When those retries are exhausted it still fails the workflow.
+
 ---
 
 ## Version invariants
